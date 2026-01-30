@@ -11,8 +11,12 @@ wheels/
 
 uv.lock
 
-# Model train 
+# ML models & checkpoints
 models/
-*.bin
+checkpoints/
 *.pt
-*.safetensors 
+*.bin
+*.safetensors
+*.ckpt
+*.pkl
+
