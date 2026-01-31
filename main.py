@@ -1,7 +1,5 @@
-# from fastapi import FastAPI
+from datasets import load_dataset
 
-# app = FastAPI()
+dataset = load_dataset("ms_marco", "v1.1")
 
-# @app.get("/")
-# def root():
-#     return {"Hello": "World"}
+print(len(dataset))
