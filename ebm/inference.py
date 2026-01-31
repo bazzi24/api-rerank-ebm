@@ -5,13 +5,13 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using: {device}")
 
 model = JointEBMReranker(
-    base_model_name='sentence-transformers/all-MiniLM-L6-v2',
+    base_model_name=("ms_marco", "v2.1"),
     device=device
 )
 
 
 try:
-    model.load_state_dict(torch.load('models/ebm_reranker_final.pt', map_location=device))
+    model.load_state_dict(torch.load('models/ebm_reranker_v1.pt', map_location=device))
     print("Model weights loaded successfully!")
 except Exception as e:
     print(f"Error loading model weights: {e}")

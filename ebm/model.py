@@ -5,12 +5,9 @@ from transformers import AutoModel, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 
 
-
 class JointEBMReranker(nn.Module):
-    def __init__(self, base_model_name='sentence-transformers/all-MiniLM-L6-v2', device='cuda'):
+    def __init__(self, base_model_name=("ms_marco", "v2.1"), device='cuda'):
         """
-        
-        
         Args:
             base_model_name (str): Tên model từ Hugging Face (ví dụ: 'sentence-transformers/all-MiniLM-L6-v2')
             device (str): 'cuda' hoặc 'cpu'
