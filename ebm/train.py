@@ -1,76 +1,43 @@
+# ebm/train.py
 import torch
-import yaml
 from torch.optim import AdamW
-from torch.utils.data import DataLoader
-from datasets import load_dataset
+from torch.utils.data import DataLoader, TensorDataset
 from accelerate import Accelerator
-from tqdm import tqdm
 
-from model import JointEBMReranker
-from utils import ebm_inbatch_loss, collate_fn
-
-# ===== Load config =====
-with open("../config.yaml") as f:
-    config = yaml.safe_load(f)
+from ebm.models.energy_head import EBMEnergyHead
+from ebm.utils import ebm_hardneg_loss
 
 accelerator = Accelerator()
+device = accelerator.device
 
-# ===== Dataset =====
-dataset = load_dataset("microsoft/ms_marco", "v2.1")["train"]
+data = torch.load("cache/hardneg_cache.pt")
+dataset = TensorDataset(data["q"], data["p"], data["neg"])
+loader = DataLoader(dataset, batch_size=64, shuffle=True)
 
-train_loader = DataLoader(
-    dataset,
-    batch_size=config["training"]["batch_size"],
-    shuffle=True,
-    collate_fn=collate_fn,
-    num_workers=4,
-    pin_memory=True,
+model = EBMEnergyHead(hidden_size=data["q"].size(1))
+optimizer = AdamW(model.parameters(), lr=1e-4)
+
+model, optimizer, loader = accelerator.prepare(
+    model, optimizer, loader
 )
 
-# ===== Model =====
-model = JointEBMReranker(
-    base_model_name=config["model"]["base_model"],
-    freeze_encoder=config["training"]["freeze_encoder"],
-)
-
-optimizer = AdamW(
-    model.parameters(),
-    lr=float(config["training"]["learning_rate"]),
-)
-
-model, optimizer, train_loader = accelerator.prepare(
-    model, optimizer, train_loader
-)
-
-# ===== Train =====
 model.train()
-for epoch in range(config["training"]["epochs"]):
-    total_loss = 0.0
-    progress = tqdm(train_loader, desc=f"Epoch {epoch+1}")
+for epoch in range(5):
+    total = 0
+    for q, p, neg in loader:
+        pos_e = model(q + p)
+        neg_e = model(neg)
 
-    for queries, positives in progress:
-        energies = model(queries, positives)
-
-        loss = ebm_inbatch_loss(
-            energies,
-            margin=config["training"]["margin"],
-        )
-
+        loss = ebm_hardneg_loss(pos_e, neg_e)
         accelerator.backward(loss)
+
         optimizer.step()
         optimizer.zero_grad()
+        total += loss.item()
 
-        total_loss += loss.item()
-        progress.set_postfix(loss=f"{loss.item():.4f}")
+    print(f"Epoch {epoch+1} | Loss: {total/len(loader):.4f}")
 
-    avg = total_loss / len(train_loader)
-    print(f"Epoch {epoch+1} | Avg Loss: {avg:.4f}")
-
-# ===== Save =====
-unwrapped = accelerator.unwrap_model(model)
 torch.save(
-    unwrapped.state_dict(),
-    f"{config['training']['save_dir']}/ebm_reranker_final.pt",
+    accelerator.unwrap_model(model).state_dict(),
+    "models/energy_head.pt",
 )
-
-print("Training completed")

@@ -1,45 +1,57 @@
 import torch
 from tqdm import tqdm
-from ebm.model import JointEBMReranker
 
 
 @torch.no_grad()
-def evaluate(model, dataset, k_values=(1, 5, 10)):
+def evaluate_mrr(
+    model,
+    dataset,
+    device="cuda",
+    k=10,
+    max_samples=1000,
+):
+    """
+    Sanity-check MRR@k cho MS MARCO v2.1
+    - dùng subset nhỏ
+    - chạy nhanh
+    """
+
     model.eval()
-    recall = {k: 0 for k in k_values}
-    mrr = {k: 0 for k in k_values}
+    device = torch.device(device)
+
+    mrr = 0.0
     total = 0
 
-    for item in tqdm(dataset):
-        q = item["query"]
+    for item in tqdm(dataset, desc=f"Eval MRR@{k}"):
+        if total >= max_samples:
+            break
+
+        query = item["query"]
         passages = item["passages"]["passage_text"]
         labels = item["passages"]["is_selected"]
 
         if 1 not in labels:
             continue
 
-        energies = model.compute_energy_matrix(
-            [q], passages
-        ).squeeze(0)
+        queries = [query] * len(passages)
+        energies = model.compute_energy_batch(queries, passages)
 
-        idx = torch.argsort(energies)
+        # energy thấp = tốt
+        sorted_idx = torch.argsort(energies)
+
         rank = None
-        for r, i in enumerate(idx):
-            if labels[i] == 1:
+        for r, idx in enumerate(sorted_idx.tolist()):
+            if labels[idx] == 1:
                 rank = r + 1
                 break
 
         if rank is None:
             continue
 
+        if rank <= k:
+            mrr += 1.0 / rank
+
         total += 1
-        for k in k_values:
-            if rank <= k:
-                recall[k] += 1
-                mrr[k] += 1 / rank
 
-    for k in k_values:
-        recall[k] /= max(total, 1)
-        mrr[k] /= max(total, 1)
-
-    return recall, mrr
+    model.train()
+    return mrr / max(total, 1)

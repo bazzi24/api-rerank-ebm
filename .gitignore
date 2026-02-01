@@ -20,7 +20,7 @@ checkpoints/
 *.ckpt
 *.pkl
 
-data/.jsonl
+/data/*.jsonl
 
 
 

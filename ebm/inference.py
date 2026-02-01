@@ -1,15 +1,21 @@
 import torch
-from ebm.model import JointEBMReranker
+from ebm.models.energy_head import EBMEnergyHead
+from ebm.models.text_reranker import TextEBMReranker
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model = JointEBMReranker(
-    base_model_name="sentence-transformers/msmarco-MiniLM-L6-v3",
+energy = EBMEnergyHead(hidden_size=384)
+energy.load_state_dict(torch.load("models/energy_head.pt"))
+energy.eval()
+
+model = TextEBMReranker(
+    base_model="sentence-transformers/msmarco-MiniLM-L6-v3",
+    energy_head=energy,
     device=device,
 )
 
-model.load_state_dict(
-    torch.load("models/ebm_reranker_final.pt", map_location=device)
+docs, scores = model.rerank(
+    "What is the capital of France?",
+    ["Paris is the capital of France.", "Berlin is in Germany."],
 )
-model.to(device)
-model.eval()
+print(docs, scores)

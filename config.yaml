@@ -14,3 +14,14 @@ dataset:
   subset: v2.1
   split: train
   cache_dir: .hf_cache
+
+cache:
+  enabled: true
+  dir: cache/
+
+eval:
+  enabled: true
+  k: 10
+  max_samples: 1000
+
+
