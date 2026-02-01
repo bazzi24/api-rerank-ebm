@@ -5,9 +5,12 @@ training:
   batch_size: 32
   epochs: 5
   learning_rate: 2e-5
-  margin: 1.0
   freeze_encoder: true
   save_dir: models/
+  overwrite: true
 
 dataset:
+  name: microsoft/ms_marco
+  subset: v2.1
+  split: train
   cache_dir: .hf_cache

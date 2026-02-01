@@ -16,14 +16,12 @@ class JointEBMReranker(nn.Module):
             device if torch.cuda.is_available() and device == "cuda" else "cpu"
         )
 
-        # ===== Encoder =====
         self.tokenizer = AutoTokenizer.from_pretrained(base_model_name)
         self.encoder = AutoModel.from_pretrained(base_model_name)
         self.encoder.to(self.device)
 
         hidden = self.encoder.config.hidden_size
 
-        # ===== Energy Head (IMPORTANT) =====
         self.energy_head = nn.Sequential(
             nn.Linear(hidden, 512),
             nn.SiLU(),
@@ -37,57 +35,38 @@ class JointEBMReranker(nn.Module):
             for p in self.encoder.parameters():
                 p.requires_grad = False
 
-    # ------------------------------------------------
-    # Encode text -> CLS embedding
-    # ------------------------------------------------
-    def encode(self, texts: list[str]) -> torch.Tensor:
+    def encode_pair(self, queries, docs):
         inputs = self.tokenizer(
-            texts,
+            queries,
+            docs,
             padding=True,
             truncation=True,
             max_length=512,
             return_tensors="pt",
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
         outputs = self.encoder(**inputs)
-        cls_emb = outputs.last_hidden_state[:, 0, :]  # [CLS]
-        return cls_emb
+        cls = outputs.last_hidden_state[:, 0]
+        return cls
 
-    # ------------------------------------------------
-    # Compute energy for batch
-    # ------------------------------------------------
-    def compute_energy_batch(self, queries: list[str], docs: list[str]) -> torch.Tensor:
-        assert len(queries) == len(docs)
-
-        texts = [f"{q} [SEP] {d}" for q, d in zip(queries, docs)]
-        emb = self.encode(texts)
-        energy = self.energy_head(emb).squeeze(-1)
-        return energy
-
-    # ------------------------------------------------
-    # Training forward (in-batch negatives)
-    # ------------------------------------------------
-    def forward(self, queries: list[str], positives: list[str]):
+    def compute_energy_matrix(self, queries, docs):
         """
         Returns:
-            energies: shape [B]  (positive energies)
+            energies: [B, B]
         """
-        energies = self.compute_energy_batch(queries, positives)
-        return energies
+        B = len(queries)
+        q_rep = sum([[q] * B for q in queries], [])
+        d_rep = docs * B
 
-    # ------------------------------------------------
-    # Inference rerank (for RAGFlow)
-    # ------------------------------------------------
+        emb = self.encode_pair(q_rep, d_rep)
+        energy = self.energy_head(emb).view(B, B)
+        return energy
+
     @torch.no_grad()
-    def rerank(self, query: str, docs: list[str], top_k: int = 5):
+    def rerank(self, query, docs, top_k=5):
         queries = [query] * len(docs)
-        energies = self.compute_energy_batch(queries, docs)
+        emb = self.encode_pair(queries, docs)
+        energies = self.energy_head(emb).squeeze(-1)
 
-        sorted_idx = torch.argsort(energies)
-        top_idx = sorted_idx[:top_k]
-
-        reranked_docs = [docs[i] for i in top_idx]
-        reranked_energies = energies[top_idx].cpu().tolist()
-
-        return reranked_docs, reranked_energies
+        idx = torch.argsort(energies)[:top_k]
+        return [docs[i] for i in idx], energies[idx].cpu().tolist()

@@ -1,48 +1,31 @@
 import torch
+import torch.nn.functional as F
 
 
-def ebm_inbatch_loss(energies: torch.Tensor, margin: float = 1.0):
+def ebm_inbatch_softmax_loss(energy_matrix: torch.Tensor):
     """
-    energies: shape [B]  (positive energies)
+    energy_matrix: [B, B]
+    Diagonal = positive
     """
-    B = energies.size(0)
+    labels = torch.arange(
+        energy_matrix.size(0),
+        device=energy_matrix.device
+    )
+    loss = F.cross_entropy(-energy_matrix, labels)
+    return loss
 
-    pos = energies.unsqueeze(1)        # [B, 1]
-    neg = energies.unsqueeze(0)        # [1, B]
-
-    loss = torch.relu(pos - neg + margin)
-
-    # remove self-comparison
-    mask = torch.eye(B, device=energies.device)
-    loss = loss * (1 - mask)
-
-    return loss.mean()
 
 def collate_fn(batch):
-    """
-    Robust collate function cho MS MARCO v2.1
-
-    Output:
-      - queries:   List[str]
-      - positives: List[str]
-
-    Quy tắc:
-      - Mỗi query lấy 1 positive passage đầu tiên (is_selected == 1)
-      - Nếu sample không có positive → skip
-    """
-
-    queries = []
-    positives = []
+    queries, positives = [], []
 
     for item in batch:
-        query = item.get("query", None)
+        q = item.get("query")
         passages = item.get("passages", {}).get("passage_text", [])
         labels = item.get("passages", {}).get("is_selected", [])
 
-        if query is None or not passages or not labels:
+        if q is None:
             continue
 
-        # tìm positive
         pos_idx = None
         for i, flag in enumerate(labels):
             if flag == 1:
@@ -52,9 +35,7 @@ def collate_fn(batch):
         if pos_idx is None:
             continue
 
-        queries.append(query)
+        queries.append(q)
         positives.append(passages[pos_idx])
 
     return queries, positives
-
-
