@@ -1,53 +1,71 @@
+# ebm/data/build_cache.py
 import json
+import os
 import torch
-from transformers import AutoTokenizer, AutoModel
 from tqdm import tqdm
+from transformers import AutoTokenizer, AutoModel
+
+# ================= CONFIG =================
+MODEL_NAME = "sentence-transformers/msmarco-MiniLM-L6-v3"
+INPUT_JSONL = "data/msmarco_train.jsonl"
+OUT_CACHE = "cache/hardneg_cache.pt"
+
+K_NEG = 4          
+MAX_SAMPLES = None 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# ==========================================
 
 
-def build_cache(
-    model_name="sentence-transformers/msmarco-MiniLM-L6-v3",
-    jsonl="data/msmarco_train.jsonl",
-    out_pt="cache/hardneg_cache.pt",
-    device="cuda",
-):
-    device = torch.device(device if torch.cuda.is_available() else "cpu")
+def build_cache():
+    os.makedirs("cache", exist_ok=True)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    encoder = AutoModel.from_pretrained(model_name).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    encoder = AutoModel.from_pretrained(MODEL_NAME).to(DEVICE)
     encoder.eval()
 
-    q_embs, p_embs, neg_embs = [], [], []
+    q_embs = []
+    p_embs = []
+    neg_embs = []
 
-    with open(jsonl, encoding="utf-8") as f, torch.no_grad():
-        for line in tqdm(f, desc="Building embedding cache"):
+    with open(INPUT_JSONL, "r", encoding="utf-8") as f, torch.no_grad():
+        for idx, line in enumerate(tqdm(f, desc="Building embedding cache")):
+            if MAX_SAMPLES and idx >= MAX_SAMPLES:
+                break
+
             item = json.loads(line)
 
-            texts = [item["query"], item["positive"]] + item["negatives"]
+            negatives = item["negatives"]
+            if len(negatives) < K_NEG:
+                continue  
+
+            negatives = negatives[:K_NEG]
+
+            texts = [item["query"], item["positive"]] + negatives
 
             inputs = tokenizer(
                 texts,
                 padding=True,
                 truncation=True,
-                max_length=256,
+                max_length=512,
                 return_tensors="pt",
-            ).to(device)
+            ).to(DEVICE)
 
             outputs = encoder(**inputs)
-            emb = outputs.last_hidden_state[:, 0, :].cpu()
+            emb = outputs.last_hidden_state[:, 0, :].cpu()  # [2+K, D]
 
-            q_embs.append(emb[0])
-            p_embs.append(emb[1])
-            neg_embs.append(emb[2:])
+            q_embs.append(emb[0])                  # [D]
+            p_embs.append(emb[1])                  # [D]
+            neg_embs.append(emb[2:2 + K_NEG])      # [K, D]
 
-    data = {
-        "query": torch.stack(q_embs),
-        "positive": torch.stack(p_embs),
-        "negatives": torch.stack(neg_embs),
+    cache = {
+        "query": torch.stack(q_embs),      # [N, D]
+        "positive": torch.stack(p_embs),   # [N, D]
+        "negatives": torch.stack(neg_embs) # [N, K, D]
     }
 
-    torch.save(data, out_pt)
-    print(f"✅ Saved cache to {out_pt}")
-    print({k: v.shape for k, v in data.items()})
+    torch.save(cache, OUT_CACHE)
+    print(f"\n✅ Cache saved to {OUT_CACHE}")
+    print(f"Samples: {cache['query'].size(0)} | K_NEG={K_NEG}")
 
 
 if __name__ == "__main__":
