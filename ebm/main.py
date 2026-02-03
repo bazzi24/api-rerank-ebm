@@ -1,74 +1,91 @@
+# ebm/main.py
 import torch
-import yaml
-from torch.optim import AdamW
-from torch.utils.data import DataLoader
-from datasets import load_dataset
-from accelerate import Accelerator
-from tqdm import tqdm
+import numpy as np
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import List
 
-from model import JointEBMReranker
-from utils import ebm_inbatch_softmax_loss, collate_fn
+from ebm.model import JointEBMReranker
 
-with open("../config.yaml") as f:
-    config = yaml.safe_load(f)
+# ================= CONFIG =================
+MODEL_PATH = "models/ebm_hardneg.pt"
+BASE_MODEL = "sentence-transformers/msmarco-MiniLM-L6-v3"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# =========================================
 
-accelerator = Accelerator()
+app = FastAPI(title="EBM Reranker (RAGFlow compatible)")
 
-dataset = load_dataset(
-    config["dataset"]["name"],
-    config["dataset"]["subset"],
-    split=config["dataset"]["split"],
-    cache_dir=config["dataset"]["cache_dir"],
-)
-
-train_loader = DataLoader(
-    dataset,
-    batch_size=config["training"]["batch_size"],
-    shuffle=True,
-    collate_fn=collate_fn,
-    num_workers=4,
-    pin_memory=True,
-)
-
+# ===== Load model =====
 model = JointEBMReranker(
-    base_model_name=config["model"]["base_model"],
-    freeze_encoder=config["training"]["freeze_encoder"],
+    base_model_name=BASE_MODEL,
+    device=DEVICE,
+    freeze_encoder=True,   # inference dùng encoder
 )
+model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+model.to(DEVICE)
+model.eval()
 
-optimizer = AdamW(
-    model.parameters(),
-    lr=float(config["training"]["learning_rate"]),
-)
+# -------- OpenAI-style schema --------
+class RerankRequest(BaseModel):
+    model: str | None = "ebm-reranker"
+    query: str
+    documents: List[str]
+    top_n: int | None = None
 
-model, optimizer, train_loader = accelerator.prepare(
-    model, optimizer, train_loader
-)
 
-model.train()
-for epoch in range(config["training"]["epochs"]):
-    total = 0.0
-    progress = tqdm(train_loader, desc=f"Epoch {epoch+1}")
+class RerankResult(BaseModel):
+    index: int
+    relevance_score: float
 
-    for queries, positives in progress:
-        if len(queries) < 2:
-            continue
 
-        energies = model.compute_energy_matrix(queries, positives)
-        loss = ebm_inbatch_softmax_loss(energies)
+class RerankResponse(BaseModel):
+    results: List[RerankResult]
 
-        accelerator.backward(loss)
-        optimizer.step()
-        optimizer.zero_grad()
 
-        total += loss.item()
-        progress.set_postfix(loss=f"{loss.item():.4f}")
+# -------- Endpoint --------
+@app.post("/v1/rerank")
+def rerank(req: RerankRequest):
+    docs = req.documents
+    query = req.query
+    top_n = req.top_n or len(docs)
 
-    print(f"Epoch {epoch+1} | Avg Loss: {total / len(train_loader):.4f}")
+    if not docs:
+        return {"results": []}
 
-unwrapped = accelerator.unwrap_model(model)
-torch.save(
-    unwrapped.state_dict(),
-    f"{config['training']['save_dir']}/ebm_reranker_final.pt",
-)
+    with torch.no_grad():
+        queries = [query] * len(docs)
 
-print("Training completed")
+        # [1, N]
+        energy_matrix = model.compute_energy_matrix(queries, docs)
+
+        # lấy hàng đầu tiên
+        energies = energy_matrix[0].cpu().numpy()
+
+    # energy thấp = tốt → đảo dấu
+    scores = -energies
+
+    print("Energies:", energies)
+    print("Scores:", scores)
+
+    # normalize về [0,1]
+    if scores.max() > scores.min():
+        scores = (scores - scores.min()) / (scores.max() - scores.min())
+    else:
+        scores = np.zeros_like(scores)
+
+    # sort giảm dần
+    idx = np.argsort(scores)[::-1][:top_n]
+
+    results = [
+        {
+            "index": int(i),
+            "relevance_score": float(scores[i])
+        }
+        for i in idx
+    ]
+
+    return {"results": results}
+
+
+
+

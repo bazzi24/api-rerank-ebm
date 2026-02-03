@@ -5,8 +5,8 @@ from torch.optim import AdamW
 from accelerate import Accelerator
 from tqdm import tqdm
 
-from ebm.model import JointEBMReranker
-from ebm.utils import ebm_hardneg_loss
+from model import JointEBMReranker
+from utils import ebm_hardneg_loss
 
 # ================= CONFIG =================
 CACHE_PATH = "cache/hardneg_cache.pt"
