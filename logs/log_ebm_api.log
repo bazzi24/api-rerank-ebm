@@ -1,0 +1,22 @@
+2026-02-05 21:45:39,941 - ebm.main - INFO - Loading EBM model from models/ebm_hardneg.pt
+2026-02-05 21:45:39,941 - ebm.main - INFO - Using device: cuda
+2026-02-05 21:45:42,685 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/msmarco-MiniLM-L6-v3/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-02-05 21:45:42,717 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/msmarco-MiniLM-L6-v3/fea93b3df3924e5649a4e322c345f951239d2c13/config.json "HTTP/1.1 200 OK"
+2026-02-05 21:45:42,998 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/msmarco-MiniLM-L6-v3/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-02-05 21:45:43,032 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/msmarco-MiniLM-L6-v3/fea93b3df3924e5649a4e322c345f951239d2c13/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-02-05 21:45:43,313 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/msmarco-MiniLM-L6-v3/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-02-05 21:45:43,602 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/msmarco-MiniLM-L6-v3/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-02-05 21:45:44,024 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/sentence-transformers/msmarco-MiniLM-L6-v3/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-02-05 21:45:44,057 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/msmarco-MiniLM-L6-v3/fea93b3df3924e5649a4e322c345f951239d2c13/config.json "HTTP/1.1 200 OK"
+2026-02-05 21:45:44,347 - ebm.main - INFO - ✅ Model loaded successfully
+2026-02-05 21:45:44,364 - ebm.main - INFO - ================================================================================
+2026-02-05 21:45:44,364 - ebm.main - INFO - 🚀 EBM Reranker API Started
+2026-02-05 21:45:44,364 - ebm.main - INFO - ================================================================================
+2026-02-05 21:45:44,364 - ebm.main - INFO - Model: sentence-transformers/msmarco-MiniLM-L6-v3
+2026-02-05 21:45:44,364 - ebm.main - INFO - Weights: models/ebm_hardneg.pt
+2026-02-05 21:45:44,365 - ebm.main - INFO - Device: cuda
+2026-02-05 21:45:44,365 - ebm.main - INFO - Endpoints:
+2026-02-05 21:45:44,365 - ebm.main - INFO -   - POST /v1/rerank
+2026-02-05 21:45:44,365 - ebm.main - INFO -   - GET /health
+2026-02-05 21:45:44,365 - ebm.main - INFO -   - GET /docs
+2026-02-05 21:45:44,365 - ebm.main - INFO - ================================================================================

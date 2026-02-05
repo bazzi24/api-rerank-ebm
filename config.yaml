@@ -1,0 +1,27 @@
+model:
+  base_model: sentence-transformers/msmarco-MiniLM-L6-v3
+
+training:
+  batch_size: 32
+  epochs: 5
+  learning_rate: 2e-5
+  freeze_encoder: true
+  save_dir: models/
+  overwrite: true
+
+dataset:
+  name: microsoft/ms_marco
+  subset: v2.1
+  split: train
+  cache_dir: .hf_cache
+
+cache:
+  enabled: true
+  dir: cache/
+
+eval:
+  enabled: true
+  k: 10
+  max_samples: 1000
+
+
