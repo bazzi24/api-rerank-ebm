@@ -292,13 +292,32 @@ async def rerank(req: RerankRequest):
             logger.warning("⚠️  Empty documents list")
             return RerankResponse(results=[])
 
-        # Compute scores with EBM model
-        with torch.no_grad():
-            queries = [query] * len(docs)
+        # Compute scores with EBM model using batch processing to avoid GPU OOM
+        BATCH_SIZE = 16  # Process 16 documents at a time to fit in 4GB GPU
+        all_energies = []
 
-            # Compute energy matrix [1, N]
-            energy_matrix = model.compute_energy_matrix(queries, docs)
-            energies = energy_matrix[0].cpu().numpy()
+        with torch.no_grad():
+            num_batches = (len(docs) + BATCH_SIZE - 1) // BATCH_SIZE
+
+            for batch_idx in range(num_batches):
+                start_idx = batch_idx * BATCH_SIZE
+                end_idx = min(start_idx + BATCH_SIZE, len(docs))
+                batch_docs = docs[start_idx:end_idx]
+
+                # Process this batch
+                queries = [query] * len(batch_docs)
+                energy_matrix = model.compute_energy_matrix(queries, batch_docs)
+                batch_energies = energy_matrix[0].cpu().numpy()
+                all_energies.append(batch_energies)
+
+                # Clear GPU cache after each batch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+            # Combine all batch results
+            energies = np.concatenate(all_energies)
+
+            logger.info(f"   Processed {num_batches} batches of size {BATCH_SIZE}")
 
         # Convert energy to scores (lower energy = better = higher score)
         scores = -energies
