@@ -69,7 +69,7 @@ def monitor_logs():
             continue
 
     if not log_file:
-        print("\n⚠️  RAGFlow log file not found. Monitoring API health only.\n")
+        print("\nRAGFlow log file not found. Monitoring API health only.\n")
 
     # Monitor loop
     log_buffer = deque(maxlen=20)  # Keep last 20 log lines
@@ -95,8 +95,8 @@ def monitor_logs():
                         if "[EBM RERANK]" in line:
                             request_count += 1
                             print("\n" + "-" * 80)
-                            print(f"🔔 RERANK DETECTED! (#{request_count})")
-                            print(f"⏰ {datetime.now()}")
+                            print(f"RERANK DETECTED! (#{request_count})")
+                            print(f"{datetime.now()}")
                             print("-" * 80)
                             print(line.strip())
 
@@ -113,7 +113,7 @@ def monitor_logs():
                     time.sleep(0.1)
 
         except FileNotFoundError:
-            print(f"\n❌ Cannot tail log file: {log_file}")
+            print(f"\nCannot tail log file: {log_file}")
             print("   Make sure RAGFlow is running and generating logs.\n")
     else:
         # Just monitor API health
@@ -126,16 +126,16 @@ def monitor_logs():
 def main():
     """Main entry point"""
     try:
-        print("\n🚀 Starting EBM Rerank Monitor...")
+        print("\nStarting EBM Rerank Monitor...")
         print("   Press Ctrl+C to stop\n")
         time.sleep(1)
         monitor_logs()
     except KeyboardInterrupt:
-        print("\n\n✋ Monitor stopped by user")
-        print(f"📊 Total rerank requests detected: {request_count}")
+        print("\n\nMonitor stopped by user")
+        print(f"Total rerank requests detected: {request_count}")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         sys.exit(1)
 
 

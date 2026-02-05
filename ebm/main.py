@@ -179,9 +179,9 @@ try:
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
     model.to(DEVICE)
     model.eval()
-    logger.info("✅ Model loaded successfully")
+    logger.info("Model loaded successfully")
 except Exception as e:
-    logger.error(f"❌ Failed to load model: {e}")
+    logger.error(f"Failed to load model: {e}")
     raise
 
 
@@ -298,7 +298,7 @@ async def rerank(req: RerankRequest):
 
         # Handle empty documents
         if not docs:
-            logger.warning("⚠️  Empty documents list")
+            logger.warning("Empty documents list")
             return RerankResponse(results=[])
 
         # Compute scores with EBM model using batch processing to avoid GPU OOM
@@ -374,7 +374,7 @@ async def rerank(req: RerankRequest):
 
     except Exception as e:
         logger.error("=" * 80)
-        logger.error(f"❌ RERANK ERROR: {e}")
+        logger.error(f"RERANK ERROR: {e}")
         logger.error("=" * 80)
         import traceback
         traceback.print_exc()
@@ -389,7 +389,7 @@ async def rerank(req: RerankRequest):
 async def startup_event():
     """Log startup information"""
     logger.info("=" * 80)
-    logger.info("🚀 EBM Reranker API Started")
+    logger.info("  EBM Reranker API Started")
     logger.info("=" * 80)
     logger.info(f"Model: {BASE_MODEL}")
     logger.info(f"Weights: {MODEL_PATH}")
