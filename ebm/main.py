@@ -291,7 +291,7 @@ async def rerank(req: RerankRequest):
 
         # Log request
         logger.info("=" * 80)
-        logger.info(f"🔄 RERANK REQUEST at {start_time}")
+        logger.info(f"   RERANK REQUEST at {start_time}")
         logger.info(f"   Query: {query[:100]}..." if len(query) > 100 else f"   Query: {query}")
         logger.info(f"   Documents: {len(docs)}")
         logger.info(f"   Top N requested: {top_n}")
@@ -302,7 +302,7 @@ async def rerank(req: RerankRequest):
             return RerankResponse(results=[])
 
         # Compute scores with EBM model using batch processing to avoid GPU OOM
-        BATCH_SIZE = 16  # Process 16 documents at a time to fit in 4GB GPU
+        BATCH_SIZE = 8  # Process 8 documents at a time for better performance on weaker GPUs
         all_energies = []
 
         with torch.no_grad():
@@ -365,7 +365,7 @@ async def rerank(req: RerankRequest):
             logger.info(f"      {rank}. [idx={result.index}] score={result.relevance_score:.4f}: {doc_preview}")
 
         elapsed = (datetime.now() - start_time).total_seconds()
-        logger.info(f"✅ Reranking completed in {elapsed:.3f}s")
+        logger.info(f"   Reranking completed in {elapsed:.3f}s")
         logger.info(f"   Returning {len(results_to_return)} results")
         logger.info(f"   Request ID: {request_id}")
         logger.info("=" * 80)
