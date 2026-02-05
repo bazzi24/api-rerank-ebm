@@ -21,6 +21,7 @@ checkpoints/
 *.pkl
 
 /data/*.jsonl
+/log/*.log
 
 
 

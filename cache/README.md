@@ -1,1 +1,0 @@
-Area to save embedding cache
