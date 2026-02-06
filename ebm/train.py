@@ -1,4 +1,4 @@
-# ebm/train.py
+# test
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import AdamW
@@ -71,7 +71,7 @@ def main():
     accelerator.wait_for_everyone()
     unwrapped = accelerator.unwrap_model(model)
     torch.save(unwrapped.state_dict(), "models/ebm_hardneg.pt")
-    print("✅ Training finished & model saved")
+    print(" Training finished & model saved")
 
 
 if __name__ == "__main__":

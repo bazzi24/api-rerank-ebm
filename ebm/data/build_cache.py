@@ -1,4 +1,4 @@
-# ebm/data/build_cache.py
+# test bi-encoder
 import json
 import os
 import torch
@@ -64,7 +64,7 @@ def build_cache():
     }
 
     torch.save(cache, OUT_CACHE)
-    print(f"\n✅ Cache saved to {OUT_CACHE}")
+    print(f"\n Cache saved to {OUT_CACHE}")
     print(f"Samples: {cache['query'].size(0)} | K_NEG={K_NEG}")
 
 

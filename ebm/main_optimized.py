@@ -68,9 +68,9 @@ try:
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
     model.to(DEVICE)
     model.eval()
-    logger.info("✅ Model loaded successfully")
+    logger.info(" Model loaded successfully")
 except Exception as e:
-    logger.error(f"❌ Model loading failed: {e}")
+    logger.error(f" Model loading failed: {e}")
     raise
 
 
@@ -147,7 +147,7 @@ async def rerank(req: RerankRequest):
 
         # Log request
         logger.info("=" * 80)
-        logger.info(f"🔄 RERANK REQUEST at {start_time}")
+        logger.info(f"   RERANK REQUEST at {start_time}")
         logger.info(f"   Query: '{query[:80]}{'...' if len(query) > 80 else ''}'")
         logger.info(f"   Documents: {len(docs)}")
         logger.info(f"   Top N: {top_n}")
@@ -161,7 +161,7 @@ async def rerank(req: RerankRequest):
 
         # Handle empty documents
         if not docs:
-            logger.warning("⚠️  Empty documents list")
+            logger.warning("  Empty documents list")
             return RerankResponse(results=[])
 
         # Compute EBM scores
@@ -201,14 +201,14 @@ async def rerank(req: RerankRequest):
             logger.info(f"      {rank}. [idx={r.index}] score={r.relevance_score:.4f} - {doc_preview}")
 
         elapsed = (datetime.now() - start_time).total_seconds()
-        logger.info(f"✅ Completed in {elapsed:.3f}s - Returning {len(results)} results")
+        logger.info(f" Completed in {elapsed:.3f}s - Returning {len(results)} results")
         logger.info("=" * 80)
 
         return RerankResponse(results=results)
 
     except Exception as e:
         logger.error("=" * 80)
-        logger.error(f"❌ RERANK ERROR: {e}")
+        logger.error(f" RERANK ERROR: {e}")
         logger.error("=" * 80)
         import traceback
         traceback.print_exc()
@@ -230,7 +230,7 @@ async def test_rerank():
         "Java is used for enterprise application development."
     ]
 
-    logger.info("🧪 Running test rerank...")
+    logger.info(" Running test rerank...")
 
     result = await rerank(RerankRequest(
         query=test_query,
@@ -250,7 +250,7 @@ async def test_rerank():
             }
             for i, r in enumerate(result.results)
         ],
-        "status": "✅ Test passed!"
+        "status": " Test passed!"
     }
 
 
@@ -259,7 +259,7 @@ async def test_rerank():
 async def startup():
     """Log startup info"""
     logger.info("=" * 80)
-    logger.info("🚀 EBM Reranker API Started")
+    logger.info(" EBM Reranker API Started")
     logger.info("=" * 80)
     logger.info(f"Version: 2.0.0 (Optimized)")
     logger.info(f"Model: {BASE_MODEL}")
