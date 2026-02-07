@@ -1,4 +1,3 @@
-# ebm/train.py
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import AdamW
@@ -8,12 +7,27 @@ from tqdm import tqdm
 from model import JointEBMReranker
 from utils import ebm_hardneg_loss
 
+import os
+import logging
+
+
 # ================= CONFIG =================
 CACHE_PATH = "cache/hardneg_cache.pt"
 BATCH_SIZE = 64
 EPOCHS = 5
 LR = 1e-4
 DEVICE = "cuda"
+LOG_FILE = "train.log"
+LOG_DIR = "logs"
+
+os.makedirs(LOG_FILE, exist_ok=True)
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    encoding="utf-8"
+)
 # =========================================
 
 
@@ -65,7 +79,7 @@ def main():
             total_loss += loss.item()
             prog.set_postfix(loss=f"{loss.item():.4f}")
 
-        print(f"Epoch {epoch+1} | Avg Loss: {total_loss / len(loader):.4f}")
+        logging.info(f"Epoch {epoch+1} | Avg Loss: {total_loss / len(loader):.4f}")
 
     # ===== Save =====
     accelerator.wait_for_everyone()

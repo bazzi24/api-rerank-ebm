@@ -52,5 +52,5 @@ if __name__ == "__main__":
     convert_msmarco(
         out_file="data/msmarco_train.jsonl",
         max_negatives=4,
-        max_samples=None,  # set số nhỏ nếu test
+        max_samples=None,  
     )
